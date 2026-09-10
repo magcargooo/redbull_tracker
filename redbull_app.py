@@ -8,7 +8,7 @@ except FileNotFoundError:
     records = []
 for record in records:
     record["date"] = date.fromisoformat(record["date"])   
-st.title("Red Bull Tracker 🪽🐿⚽🐂")
+st.title("Red Bull Tracker 🐿⚽🐂")
 tab1, tab2 = st.tabs(["記録する", "記録を見る"])
 with tab1:
     count = st.number_input("本数", min_value=1, step=1)
