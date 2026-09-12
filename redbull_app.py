@@ -8,9 +8,9 @@ if "access_token" in st.session_state:
     supabase.auth.set_session(st.session_state["access_token"],st.session_state["refresh_token"])
 
 st.title("Red Bull Tracker 🐿⚽🐂")
-
-email = st.text_input("メールアドレス")
-password = st.text_input("パスワード", type="password")
+if "user_id" not in st.session_state:
+    email = st.text_input("メールアドレス")
+    password = st.text_input("パスワード", type="password")
 if st.button("ログイン"):
     try:
         response = supabase.auth.sign_in_with_password({"email": email,"password": password})
@@ -19,9 +19,9 @@ if st.button("ログイン"):
             st.session_state["access_token"] = response.session.access_token
             st.session_state["refresh_token"] = response.session.refresh_token
             st.success("ログイン成功！")
+            st.rerun()
     except Exception as e:
         st.error(f"ログインできません: {e}")
-if "user_id" not in st.session_state:
     st.stop()
 st.success("ログイン済み")
 response = supabase.table("redbull_records").select("*").execute()
@@ -34,14 +34,13 @@ if st.button("ログアウト"):
         
 tab1, tab2 = st.tabs(["記録する", "記録を見る"])
 with tab1:
+    record_date = st.date_input("日付", value=date.today())
     count = st.number_input("本数", min_value=1, step=1)
     capacity = st.selectbox("容量", [250, 330, 335, 473])
     flavor = st.selectbox("種類", ["オリジナル", "シュガーフリー", "グレープ", "マスカット", "チェリー", "すだち", "大宮オレンジソウル"])
     if st.button("記録する"):
-        today = date.today()
-
-        record = {"date": today,"flavor": flavor,"count": count,"capacity": capacity}
-        db_record = {"date": str(today),"flavor": flavor,"count": count,"capacity": capacity,"user_id": st.session_state["user_id"]}
+        record = {"date": record_date,"flavor": flavor,"count": count,"capacity": capacity}
+        db_record = {"date": str(record_date),"flavor": flavor,"count": count,"capacity": capacity,"user_id": st.session_state["user_id"]}
         supabase.table("redbull_records").insert(db_record).execute()
         records.append(record)
         st.success("記録しました！")
