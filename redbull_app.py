@@ -1,14 +1,37 @@
 import streamlit as st
-import json
+from supabase import create_client
 from datetime import date
-try:
-    with open("records.json", "r") as file:
-        records = json.load(file)
-except FileNotFoundError:
-    records = []
-for record in records:
-    record["date"] = date.fromisoformat(record["date"])   
+supabase_url = st.secrets["SUPABASE_URL"]
+supabase_key = st.secrets["SUPABASE_KEY"]
+supabase = create_client(supabase_url, supabase_key)
+if "access_token" in st.session_state:
+    supabase.auth.set_session(st.session_state["access_token"],st.session_state["refresh_token"])
+
 st.title("Red Bull Tracker 🐿⚽🐂")
+
+email = st.text_input("メールアドレス")
+password = st.text_input("パスワード", type="password")
+if st.button("ログイン"):
+    try:
+        response = supabase.auth.sign_in_with_password({"email": email,"password": password})
+        if response.user:
+            st.session_state["user_id"] = response.user.id
+            st.session_state["access_token"] = response.session.access_token
+            st.session_state["refresh_token"] = response.session.refresh_token
+            st.success("ログイン成功！")
+    except Exception as e:
+        st.error(f"ログインできません: {e}")
+if "user_id" not in st.session_state:
+    st.stop()
+st.success("ログイン済み")
+response = supabase.table("redbull_records").select("*").execute()
+records = response.data
+for record in records:
+    record["date"] = date.fromisoformat(record["date"])    
+if st.button("ログアウト"):
+    st.session_state.clear()
+    st.rerun()
+        
 tab1, tab2 = st.tabs(["記録する", "記録を見る"])
 with tab1:
     count = st.number_input("本数", min_value=1, step=1)
@@ -16,17 +39,13 @@ with tab1:
     flavor = st.selectbox("種類", ["オリジナル", "シュガーフリー", "グレープ", "マスカット", "チェリー", "すだち", "大宮オレンジソウル"])
     if st.button("記録する"):
         today = date.today()
+
         record = {"date": today,"flavor": flavor,"count": count,"capacity": capacity}
+        db_record = {"date": str(today),"flavor": flavor,"count": count,"capacity": capacity,"user_id": st.session_state["user_id"]}
+        supabase.table("redbull_records").insert(db_record).execute()
         records.append(record)
-
-        save_records = []
-        for record in records:
-            save_record = {"date": str(record["date"]),"flavor": record["flavor"],"count": record["count"],"capacity": record["capacity"]}
-            save_records.append(save_record)
-
-        with open("records.json", "w") as file:
-            json.dump(save_records, file)
         st.success("記録しました！")
+    
 with tab2:        
     st.subheader("記録一覧")
     total_count = 0
