@@ -7,7 +7,28 @@ supabase = create_client(supabase_url, supabase_key)
 if "access_token" in st.session_state:
     supabase.auth.set_session(st.session_state["access_token"],st.session_state["refresh_token"])
 
+def calculate_total(records):
+    calculate_total = 0
+    for record in records:
+        calculate_total += record["count"]
+    return calculate_total
+
+def calculate_month_total(records, year, month):
+    total_month = 0
+    for record in records:
+        if year == record["date"].year and month == record["date"].month:
+            total_month += record["count"]
+    return total_month
+
+def calculate_year_total(records, year):
+    total_year = 0
+    for record in records:
+        if year == record["date"].year:
+            total_year += record["count"]
+    return total_year
+
 st.title("Red Bull Tracker 🐿⚽🐂")
+st.caption("Red Bullの飲用記録を保存・集計できるアプリです。")
 if "user_id" not in st.session_state and "demo_mode" not in st.session_state:
     email = st.text_input("メールアドレス")
     password = st.text_input("パスワード", type="password")
@@ -37,14 +58,15 @@ else:
 records = response.data
 for record in records:
     record["date"] = date.fromisoformat(record["date"])    
-if st.button("ログアウト"):
+if "demo_mode" in st.session_state:
+    button_label = "デモを終了"
+else:
+    button_label = "ログアウト"
+if st.button(button_label):
     st.session_state.clear()
     st.rerun()
 if "demo_mode" in st.session_state:
-    total_public = 0
-
-    for record in records:
-        total_public += record["count"]
+    total_public = calculate_total(records)
     st.subheader("みんなの公開記録")
     st.write("公開されている合計:", total_public, "本")    
         
@@ -68,11 +90,8 @@ if "demo_mode" in st.session_state:
     st.write(str(selected_year),"年",str(selected_month),"月","合計:" ,str(total_month,),"本")
     
     st.write("公開されている年別集計")
-    total_year=0
     selected_year = st.number_input("年", min_value=2020, step=1,key="year_year")
-    for record in records:
-            if selected_year ==record["date"].year:
-                total_year += record["count"]
+    total_year = calculate_year_total(records, selected_year)
     st.write(str(selected_year),"年","合計:" ,str(total_year,),"本")
     
         
@@ -153,23 +172,20 @@ with tab1:
         st.success("記録しました！")
     
 with tab2:        
-    st.subheader("記録一覧")
-    total_count = 0
+    st.subheader("記録一覧") 
     for record in records:
         st.write("日付:", record["date"])
         st.write("種類",record["flavor"])
         st.write("本数",record["count"])
         st.write("容量",record["capacity"])
-        total_count += record["count"]
+    total_count = calculate_total(records)
     st.write("合計:" , str(total_count),"本") 
 
     st.subheader("月別集計")
     total_month=0
     selected_year = st.number_input("年", min_value=2020, step=1,key="month_year")
     selected_month = st.selectbox("月", [1,2,3,4,5,6,7,8,9,10,11,12])
-    for record in records:
-        if selected_year ==record["date"].year and selected_month==record["date"].month:
-            total_month += record["count"]
+    total_month = calculate_month_total(records, selected_year, selected_month)
     st.write(str(selected_year),"年",str(selected_month),"月","合計:" ,str(total_month,),"本")
 
     st.write("年別集計")
